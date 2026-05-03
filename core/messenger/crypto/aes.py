@@ -1,6 +1,7 @@
 """Module providing functions for working with Advanced Encryption Standard"""
 
 # Substitution boxes
+import os
 
 sub_box = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -324,8 +325,12 @@ class AES:
         """Encrypts `plaintext` using CBC mode and PKCS#7 padding with master_key"""
         plaintext = pad(plaintext)
 
+        # blocks = []
+        # previous = self.__master_key
+        iv = os.urandom(16)
         blocks = []
-        previous = self.__master_key
+        previous = iv
+
         for plaintext_block in split_blocks(plaintext):
             # Encrypt(plaintext_block XOR previous)
             block = self.encrypt_block(xor_bytes(plaintext_block, previous))
@@ -333,12 +338,17 @@ class AES:
 
             previous = block
 
-        return b''.join(blocks)
+        return iv + b''.join(blocks) 
 
     def decrypt(self, ciphertext):
         """Decrypts `ciphertext` using CBC mode and PKCS#7 padding with master_key"""
+        # blocks = []
+        # previous = self.__master_key
+        iv = ciphertext[:16]
+        ciphertext = ciphertext[16:]
+
         blocks = []
-        previous = self.__master_key
+        previous = iv
         for ciphertext_block in split_blocks(ciphertext):
             # Decrypt: previous XOR decrypt(ciphertext)
             blocks.append(xor_bytes(previous, self.decrypt_block(ciphertext_block)))

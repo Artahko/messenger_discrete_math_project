@@ -29,11 +29,17 @@ def pick_primes():
 
     return (p, q)
 
+def egcd(a, b):
+    if a == 0:
+        return b, 0, 1
+    g, y, x = egcd(b % a, a)
+    return g, x - (b // a) * y, y
+
 def mod_inverse(e, phi):
-    """Function to find modular inversion of e (mod phi)"""
-    for d in range(2, phi):
-        if (e * d) % phi == 1:
-            return d
+    g, x, _ = egcd(e, phi)
+    if g != 1:
+        raise Exception("No modular inverse")
+    return x % phi
 
 def power(number, exponent, module):
     """Computes the power of a number raised to exponent with (mod module)"""
@@ -59,11 +65,10 @@ def generate_keys():
     n = p * q
     phi = (p - 1) * (q - 1)
 
-    # Choose e, that is mutually prime with phi
-    e = 0
-    for e in range(random.choice([2,10,40,80,120]), phi):
-        if gcd(e, phi) == 1:
-            break
+    e = 65537  # standard choice
+
+    if gcd(e, phi) != 1:
+        raise Exception("e and phi not coprime")
 
     d = mod_inverse(e, phi)
 
