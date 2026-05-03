@@ -101,3 +101,41 @@ def verify_sign(message, signature, public_key, G, n, p):
     X = add_point(point_multiply(u1, G, p), point_multiply(u2, public_key, p), p)
 
     return r == X[0] % n, z_hex
+
+
+def calculate_shared_secret_key(Q, d):
+    """Calculates shared secret key used to encrypt messages in AES algorithm"""
+    new_Q = point_multiply(d, Q, p)
+
+    shared_secret = str(new_Q[0]).zfill(32)
+    shared_secret = bytes(shared_secret[:32], encoding="utf-8")
+
+    return shared_secret
+
+
+
+if __name__ == "__main__":
+    d_a, Q_a = generate_keys((Gx, Gy), n, p)
+    d_b, Q_b = generate_keys((Gx, Gy), n, p)
+
+    print(f"Alice: \nd = {d_a};\nQ = {Q_a}")
+    print(f"Bob: \nd = {d_b};\nQ = {Q_b}")
+
+    # Bob's public key and Alice's private key = shared secret
+    shared_key_a = calculate_shared_secret_key(Q_b, d_a)
+    shared_key_b = calculate_shared_secret_key(Q_a, d_b)
+
+    print(f"Alice's secret key: {shared_key_a}\nBob's secret key: {shared_key_b}")
+    print(f"Keys are equal: {shared_key_a == shared_key_b}\n")
+
+    print("*"*10+"AES"+"*"*10)
+    import aes
+
+    aes_a = aes.AES(shared_key_a)
+    aes_b = aes.AES(shared_key_b)
+
+    alice_cipher = aes_a.encrypt("Mimic")
+    print(f"Alice: {alice_cipher}")
+
+    bob_decrypted_message = aes_b.decrypt(alice_cipher)
+    print(f"Bob: {bob_decrypted_message}")

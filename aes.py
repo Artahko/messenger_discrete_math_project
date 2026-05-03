@@ -348,7 +348,7 @@ class AES:
         return unpad(b''.join(blocks))
 
 if __name__ == '__main__':
-    my_key = b"1231231231231231"
+    my_key = b"12312312312312311231231231231231" # 32 byte key
     aes = AES(my_key)
     my_message = "67/11"
     my_cipher = aes.encrypt(my_message)
