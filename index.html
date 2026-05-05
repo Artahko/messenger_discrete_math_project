@@ -7,11 +7,19 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a1628; color: #fff; height: 100vh; display: flex; overflow: hidden; }
+
+    /* ── Sidebar ── */
     .sidebar { width: 320px; flex-shrink: 0; background: #0d1b2e; border-right: 1px solid #1a2942; display: flex; flex-direction: column; }
-    .sidebar-header { padding: 18px 16px 14px; border-bottom: 1px solid #1a2942; }
-    .sidebar-header h1 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
-    .sidebar-me { font-size: 12px; color: #4a8fdf; margin-bottom: 12px; }
-    .search-wrap { position: relative; display: flex; gap: 8px; }
+    .sidebar-header { padding: 14px 16px; border-bottom: 1px solid #1a2942; }
+    .sidebar-header h1 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+    .sidebar-me { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .sidebar-me-info { flex: 1; min-width: 0; }
+    .sidebar-me-nick { font-size: 12px; color: #4a8fdf; font-weight: 600; }
+    .sidebar-me-name { font-size: 11px; color: #4a5f7f; }
+    .sidebar-me-btns { display: flex; gap: 6px; }
+    .icon-btn { background: #1a2942; border: none; border-radius: 8px; padding: 6px 8px; color: #a0b4c8; cursor: pointer; font-size: 14px; transition: background .15s; }
+    .icon-btn:hover { background: #243550; color: #fff; }
+    .search-wrap { display: flex; gap: 8px; }
     .search-input { flex: 1; background: #0a1628; color: #fff; border: 1px solid #1a2942; border-radius: 10px; padding: 9px 14px; font-size: 14px; outline: none; transition: border-color .15s; }
     .search-input:focus { border-color: #2563eb; }
     .search-input::placeholder { color: #4a5f7f; }
@@ -20,15 +28,18 @@
     .chat-list { flex: 1; overflow-y: auto; }
     .chat-list::-webkit-scrollbar { width: 4px; }
     .chat-list::-webkit-scrollbar-thumb { background: #1a2942; border-radius: 4px; }
-    .chat-item { padding: 13px 16px; border-bottom: 1px solid #1a2942; cursor: pointer; transition: background .12s; }
+    .chat-item { padding: 11px 16px; border-bottom: 1px solid #1a2942; cursor: pointer; transition: background .12s; }
     .chat-item:hover, .chat-item.active { background: #0a1628; }
-    .chat-item-inner { display: flex; align-items: center; gap: 12px; }
-    .avatar { width: 44px; height: 44px; border-radius: 50%; background: #1e3a5f; color: #60a5fa; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .chat-item-inner { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #1e3a5f; }
+    .avatar-placeholder { width: 44px; height: 44px; border-radius: 50%; background: #1e3a5f; color: #60a5fa; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .chat-name { font-size: 15px; font-weight: 500; }
     .chat-nick { font-size: 12px; color: #4a5f7f; margin-top: 2px; }
+
+    /* ── Chat area ── */
     .chat-area { flex: 1; display: flex; flex-direction: column; }
-    .chat-header { padding: 14px 20px; border-bottom: 1px solid #1a2942; display: flex; align-items: center; gap: 12px; }
-    .chat-header .avatar { width: 38px; height: 38px; font-size: 11px; }
+    .chat-header { padding: 12px 20px; border-bottom: 1px solid #1a2942; display: flex; align-items: center; gap: 12px; }
+    .chat-header .avatar, .chat-header .avatar-placeholder { width: 38px; height: 38px; font-size: 11px; }
     .chat-header-info h2 { font-size: 15px; font-weight: 600; }
     .chat-header-info p { font-size: 12px; color: #4a5f7f; }
     .lock-badge { margin-left: auto; background: #0d2b0d; color: #4ade80; border: 1px solid #166534; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 600; }
@@ -46,6 +57,8 @@
     .send-btn { background: #2563eb; border: none; border-radius: 12px; padding: 12px 20px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
     .send-btn:hover { background: #1d4ed8; }
     .no-chat { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #4a5f7f; }
+
+    /* ── Auth ── */
     .auth-screen { position: fixed; inset: 0; background: #0a1628; display: flex; align-items: center; justify-content: center; z-index: 100; }
     .auth-box { background: #0d1b2e; border: 1px solid #1a2942; border-radius: 20px; padding: 36px; width: 400px; }
     .auth-box h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
@@ -60,12 +73,14 @@
     .auth-switch { text-align: center; color: #4a5f7f; font-size: 13px; margin-top: 14px; }
     .auth-switch a { color: #60a5fa; cursor: pointer; }
     .global-err { color: #f87171; font-size: 13px; margin-bottom: 10px; }
+
+    /* ── Modals ── */
     .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 200; }
-    .modal { background: #0d1b2e; border: 1px solid #1a2942; border-radius: 16px; padding: 28px; width: 360px; }
+    .modal { background: #0d1b2e; border: 1px solid #1a2942; border-radius: 16px; padding: 28px; width: 380px; max-height: 90vh; overflow-y: auto; }
     .modal h3 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
     .modal-input { width: 100%; background: #0a1628; color: #fff; border: 1px solid #1a2942; border-radius: 10px; padding: 11px 14px; font-size: 14px; outline: none; margin-bottom: 12px; }
     .modal-input:focus { border-color: #2563eb; }
-    .modal-result { background: #0a1628; border: 1px solid #1a2942; border-radius: 10px; padding: 14px; margin-bottom: 12px; display: none; }
+    .modal-result { background: #0a1628; border: 1px solid #1a2942; border-radius: 10px; padding: 14px; margin-bottom: 12px; display: none; align-items: center; gap: 12px; }
     .modal-result .r-name { font-size: 15px; font-weight: 600; }
     .modal-result .r-nick { font-size: 12px; color: #4a8fdf; margin-top: 2px; }
     .modal-result .r-phone { font-size: 12px; color: #4a5f7f; margin-top: 2px; }
@@ -75,11 +90,34 @@
     .modal-btn.primary:hover { background: #1d4ed8; }
     .modal-btn.secondary { background: #1a2942; color: #a0b4c8; }
     .modal-btn.secondary:hover { background: #243550; }
+    .modal-btn.danger { background: #7f1d1d; color: #fca5a5; }
+    .modal-btn.danger:hover { background: #991b1b; }
     .modal-err { color: #f87171; font-size: 13px; margin-bottom: 10px; display: none; }
+
+    /* ── Profile modal ── */
+    .profile-avatar-wrap { text-align: center; margin-bottom: 20px; }
+    .profile-avatar-wrap img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #2563eb; }
+    .profile-info { background: #0a1628; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+    .profile-info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1a2942; font-size: 14px; }
+    .profile-info-row:last-child { border-bottom: none; }
+    .profile-info-row .label { color: #4a5f7f; }
+
+    /* ── Settings modal ── */
+    .settings-section { margin-bottom: 20px; }
+    .settings-section h4 { font-size: 13px; color: #4a5f7f; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+    .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+    .avatar-option { border-radius: 10px; cursor: pointer; border: 2px solid transparent; overflow: hidden; transition: border-color .15s; aspect-ratio: 1; }
+    .avatar-option img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-option:hover { border-color: #4a8fdf; }
+    .avatar-option.selected { border-color: #2563eb; }
+    .avatar-option-name { font-size: 9px; text-align: center; color: #4a5f7f; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .danger-zone { background: #1a0a0a; border: 1px solid #7f1d1d; border-radius: 10px; padding: 14px; }
+    .danger-zone p { font-size: 13px; color: #fca5a5; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
+<!-- AUTH -->
 <div class="auth-screen" id="authScreen">
   <div class="auth-box">
     <h2 id="authTitle">Увійти</h2>
@@ -94,30 +132,87 @@
   </div>
 </div>
 
+<!-- ADD CONTACT MODAL -->
 <div class="modal-bg" id="addModal" style="display:none">
   <div class="modal">
     <h3>Додати контакт</h3>
     <input class="modal-input" id="searchQ" placeholder="Нікнейм (@nick) або телефон (+380...)" />
     <div class="modal-err" id="searchErr"></div>
     <div class="modal-result" id="searchResult">
-      <div class="r-name" id="rName"></div>
-      <div class="r-nick" id="rNick"></div>
-      <div class="r-phone" id="rPhone"></div>
+      <img class="avatar" id="rAvatar" src="" />
+      <div>
+        <div class="r-name" id="rName"></div>
+        <div class="r-nick" id="rNick"></div>
+        <div class="r-phone" id="rPhone"></div>
+      </div>
     </div>
     <div class="modal-btns">
-      <button class="modal-btn secondary" onclick="closeModal()">Скасувати</button>
+      <button class="modal-btn secondary" onclick="closeModal('addModal')">Скасувати</button>
       <button class="modal-btn primary" id="searchBtn" onclick="doSearch()">Знайти</button>
     </div>
   </div>
 </div>
 
+<!-- PROFILE MODAL -->
+<div class="modal-bg" id="profileModal" style="display:none">
+  <div class="modal">
+    <h3>Мій акаунт</h3>
+    <div class="profile-avatar-wrap">
+      <img id="myAvatarBig" src="" />
+    </div>
+    <div class="profile-info">
+      <div class="profile-info-row"><span class="label">Нікнейм</span><span id="piNick"></span></div>
+      <div class="profile-info-row"><span class="label">Імʼя</span><span id="piName"></span></div>
+      <div class="profile-info-row"><span class="label">Телефон</span><span id="piPhone"></span></div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeModal('profileModal')">Закрити</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="settingsModal" style="display:none">
+  <div class="modal">
+    <h3>Налаштування</h3>
+
+    <div class="settings-section">
+      <h4>Аватарка</h4>
+      <div class="avatar-grid" id="avatarGrid"></div>
+      <div class="modal-btns" style="margin-bottom:0">
+        <button class="modal-btn secondary" onclick="closeModal('settingsModal')">Скасувати</button>
+        <button class="modal-btn primary" onclick="saveAvatar()">Зберегти</button>
+      </div>
+    </div>
+
+    <div class="settings-section" style="margin-top:24px">
+      <h4>Небезпечна зона</h4>
+      <div class="danger-zone">
+        <p>Видалення акаунту незворотне. Всі повідомлення та контакти будуть видалені.</p>
+        <button class="modal-btn danger" onclick="confirmDeleteAccount()">🗑 Видалити акаунт</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>Bello 🔐</h1>
-    <div class="sidebar-me" id="sidebarMe"></div>
+    <h1>Bello</h1>
+    <div class="sidebar-me">
+      <img class="avatar" id="myAvatarSmall" src="" />
+      <div class="sidebar-me-info">
+        <div class="sidebar-me-nick" id="sidebarNick"></div>
+        <div class="sidebar-me-name" id="sidebarName"></div>
+      </div>
+      <div class="sidebar-me-btns">
+        <button class="icon-btn" title="Мій акаунт" onclick="openProfile()">👤</button>
+        <button class="icon-btn" title="Налаштування" onclick="openSettings()">⚙️</button>
+      </div>
+    </div>
     <div class="search-wrap">
       <input class="search-input" id="filterInput" placeholder="Фільтр контактів..." />
-      <button class="add-btn" title="Додати контакт" onclick="openModal()">+</button>
+      <button class="add-btn" title="Додати контакт" onclick="openAddContact()">+</button>
     </div>
   </div>
   <div class="chat-list" id="chatList"></div>
@@ -133,6 +228,9 @@
 </div>
 
 <script>
+const API = "http://127.0.0.1:8000";
+const AVATAR_URL = id => `${API}/avatars/${id}.jpg`;
+
 //ECC secp256k1
 const ECC = (() => {
   const a=0n, p=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
@@ -149,23 +247,22 @@ const ECC = (() => {
   return{genKeys,shared};
 })();
 
-//AES-CBC
 const AES={
   async imp(k){return crypto.subtle.importKey("raw",k,{name:"AES-CBC"},false,["encrypt","decrypt"]);},
   async enc(kb,pt){const k=await this.imp(kb),iv=crypto.getRandomValues(new Uint8Array(16)),ct=await crypto.subtle.encrypt({name:"AES-CBC",iv},k,new TextEncoder().encode(pt)),r=new Uint8Array(16+ct.byteLength);r.set(iv);r.set(new Uint8Array(ct),16);return r;},
   async dec(kb,d){const k=await this.imp(kb),pt=await crypto.subtle.decrypt({name:"AES-CBC",iv:d.slice(0,16)},k,d.slice(16));return new TextDecoder().decode(pt);}
 };
 
-// State
-const API="http://127.0.0.1:8000";
+//State
 let token=localStorage.getItem("token");
 let myId=+localStorage.getItem("myId")||null;
 let myNick=localStorage.getItem("myNick")||"";
 let myDisplay=localStorage.getItem("myDisplay")||"";
+let myAvatar=localStorage.getItem("myAvatar")||"bob";
 let myPrivKey=null, myPubKey=null;
 const sharedKeys={};
 let ws=null, activeUserId=null;
-let contacts=[], foundUser=null;
+let contacts=[], foundUser=null, allAvatars=[], selectedAvatar=null;
 
 //Auth
 let authMode="login";
@@ -217,15 +314,16 @@ document.getElementById("authBtn").onclick=async()=>{
 };
 
 function saveSession(d){
-  token=d.token; myId=d.user_id; myNick=d.nickname; myDisplay=d.display_name;
+  token=d.token; myId=d.user_id; myNick=d.nickname; myDisplay=d.display_name; myAvatar=d.avatar||"bob";
   localStorage.setItem("token",token); localStorage.setItem("myId",myId);
   localStorage.setItem("myNick",myNick); localStorage.setItem("myDisplay",myDisplay);
+  localStorage.setItem("myAvatar",myAvatar);
 }
 
 //Init
 async function initApp(){
   document.getElementById("authScreen").style.display="none";
-  document.getElementById("sidebarMe").textContent=`@${myNick} · ${myDisplay}`;
+  updateSidebarMe();
 
   const sk=localStorage.getItem("eccPrivKey_"+myId);
   const sx=localStorage.getItem("eccPubX_"+myId);
@@ -240,15 +338,29 @@ async function initApp(){
   }
 
   await fetch(`${API}/api/keys/upload/`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Token ${token}`},body:JSON.stringify({x:myPubKey[0].toString(),y:myPubKey[1].toString()})});
+
+  const ar=await fetch(`${API}/api/avatars/`,{headers:{"Authorization":`Token ${token}`}});
+  allAvatars=await ar.json();
+
   await loadContacts();
   connectWS();
 }
 
-// Contacts
+function updateSidebarMe(){
+  document.getElementById("sidebarNick").textContent="@"+myNick;
+  document.getElementById("sidebarName").textContent=myDisplay;
+  document.getElementById("myAvatarSmall").src=AVATAR_URL(myAvatar);
+}
+
+//Contacts
 async function loadContacts(){
   const res=await fetch(`${API}/api/contacts/`,{headers:{"Authorization":`Token ${token}`}});
   contacts=await res.json();
   renderContacts(contacts);
+}
+
+function avatarEl(avatarId, size=44){
+  return `<img class="avatar" src="${AVATAR_URL(avatarId)}" style="width:${size}px;height:${size}px" onerror="this.style.display='none'" />`;
 }
 
 function renderContacts(list){
@@ -257,7 +369,10 @@ function renderContacts(list){
   list.forEach(c=>{
     const div=document.createElement("div");
     div.className="chat-item"+(c.user_id===activeUserId?" active":"");
-    div.innerHTML=`<div class="chat-item-inner"><div class="avatar">${c.display_name.slice(0,2).toUpperCase()}</div><div><div class="chat-name">${esc(c.display_name)}</div><div class="chat-nick">@${esc(c.nickname)}</div></div></div>`;
+    div.innerHTML=`<div class="chat-item-inner">
+      ${avatarEl(c.avatar||"bob")}
+      <div><div class="chat-name">${esc(c.display_name)}</div><div class="chat-nick">@${esc(c.nickname)}</div></div>
+    </div>`;
     div.onclick=()=>openChat(c,div);
     el.appendChild(div);
   });
@@ -268,7 +383,7 @@ document.getElementById("filterInput").oninput=e=>{
   renderContacts(contacts.filter(c=>c.nickname.toLowerCase().includes(q)||c.display_name.toLowerCase().includes(q)));
 };
 
-// Chat
+//Chat
 async function openChat(contact, el){
   activeUserId=contact.user_id;
   document.querySelectorAll(".chat-item").forEach(i=>i.classList.remove("active"));
@@ -278,9 +393,8 @@ async function openChat(contact, el){
   const ca=document.getElementById("chatArea");
   ca.innerHTML=`
     <div class="chat-header">
-      <div class="avatar">${contact.display_name.slice(0,2).toUpperCase()}</div>
+      ${avatarEl(contact.avatar||"bob", 38)}
       <div class="chat-header-info"><h2>${esc(contact.display_name)}</h2><p>@${esc(contact.nickname)} · ${esc(contact.phone)}</p></div>
-      <div class="lock-badge">🔒 E2E</div>
     </div>
     <div class="messages" id="messages"></div>
     <div class="input-area">
@@ -302,34 +416,26 @@ async function computeSharedKey(uid){
   sharedKeys[uid]=ECC.shared([BigInt(d.x),BigInt(d.y)],myPrivKey);
 }
 
-//Send / render
 async function sendMessage(){
   const inp=document.getElementById("msgInput");
   const text=inp.value.trim();
   if(!text||!activeUserId) return;
   inp.value="";
-
   const kb=sharedKeys[activeUserId];
   if(!kb){alert("Немає ключа — зачекайте поки співрозмовник онлайн");return;}
-
   const cb=await AES.enc(kb,text);
   const b64=btoa(String.fromCharCode(...cb));
-
   await renderMessage(b64,"sent");
-
-  if(ws&&ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({to:activeUserId,ciphertext:b64}));
-  }
+  if(ws&&ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({to:activeUserId,ciphertext:b64}));
 }
 
 async function renderMessage(b64, dir, time=new Date()){
   const c=document.getElementById("messages"); if(!c) return;
   let text="[не вдалося розшифрувати]";
   try{
-    const uid = dir==="sent" ? activeUserId : activeUserId;
-    const kb=sharedKeys[uid];
+    const kb=sharedKeys[activeUserId];
     if(kb){const cb=Uint8Array.from(atob(b64),x=>x.charCodeAt(0));text=await AES.dec(kb,cb);}
-  }catch(e){console.warn("decrypt error",e);}
+  }catch(e){console.warn(e);}
   const div=document.createElement("div");
   div.className=`msg ${dir}`;
   div.innerHTML=`${esc(text)}<div class="meta">${time.toLocaleTimeString("uk",{hour:"2-digit",minute:"2-digit"})}</div>`;
@@ -337,17 +443,74 @@ async function renderMessage(b64, dir, time=new Date()){
   c.scrollTop=c.scrollHeight;
 }
 
-//Modal
-function openModal(){
-  document.getElementById("addModal").style.display="flex";
+//Profile moda
+function openProfile(){
+  document.getElementById("myAvatarBig").src=AVATAR_URL(myAvatar);
+  document.getElementById("piNick").textContent="@"+myNick;
+  document.getElementById("piName").textContent=myDisplay;
+  fetch(`${API}/api/me/`,{headers:{"Authorization":`Token ${token}`}})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById("piPhone").textContent=d.phone||"—";
+    });
+  document.getElementById("profileModal").style.display="flex";
+}
+
+//Settings modal
+function openSettings(){
+  selectedAvatar=myAvatar;
+  const grid=document.getElementById("avatarGrid");
+  grid.innerHTML="";
+  allAvatars.forEach(a=>{
+    const wrap=document.createElement("div");
+    wrap.style.textAlign="center";
+    wrap.innerHTML=`<div class="avatar-option${a.id===myAvatar?" selected":""}" data-id="${a.id}" onclick="selectAvatar('${a.id}')">
+      <img src="${AVATAR_URL(a.id)}" />
+    </div>
+    <div class="avatar-option-name">${esc(a.name)}</div>`;
+    grid.appendChild(wrap);
+  });
+  document.getElementById("settingsModal").style.display="flex";
+}
+
+function selectAvatar(id){
+  selectedAvatar=id;
+  document.querySelectorAll(".avatar-option").forEach(el=>{
+    el.classList.toggle("selected", el.dataset.id===id);
+  });
+}
+
+async function saveAvatar(){
+  if(!selectedAvatar||selectedAvatar===myAvatar){closeModal("settingsModal");return;}
+  const res=await fetch(`${API}/api/account/avatar/`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Token ${token}`},body:JSON.stringify({avatar:selectedAvatar})});
+  if(res.ok){
+    myAvatar=selectedAvatar;
+    localStorage.setItem("myAvatar",myAvatar);
+    updateSidebarMe();
+    closeModal("settingsModal");
+  }
+}
+
+//Delete account
+function confirmDeleteAccount(){
+  if(!confirm("Ви впевнені? Акаунт буде видалено назавжди разом з усіма повідомленнями!")) return;
+  fetch(`${API}/api/account/`,{method:"DELETE",headers:{"Authorization":`Token ${token}`}})
+    .then(()=>{
+      clearSession();
+      closeModal("settingsModal");
+      showAuth();
+    });
+}
+
+//Add contact modal
+function openAddContact(){
   document.getElementById("searchQ").value="";
   document.getElementById("searchErr").style.display="none";
   document.getElementById("searchResult").style.display="none";
   document.getElementById("searchBtn").textContent="Знайти";
   document.getElementById("searchBtn").onclick=doSearch;
   foundUser=null;
+  document.getElementById("addModal").style.display="flex";
 }
-function closeModal(){document.getElementById("addModal").style.display="none";}
 
 async function doSearch(){
   const q=document.getElementById("searchQ").value.trim();
@@ -360,10 +523,11 @@ async function doSearch(){
   const data=await res.json();
   if(!data.found){errEl.textContent=data.error||"Користувача не знайдено";errEl.style.display="block";return;}
   foundUser=data;
+  document.getElementById("rAvatar").src=AVATAR_URL(data.avatar||"bob");
   document.getElementById("rName").textContent=data.display_name;
   document.getElementById("rNick").textContent="@"+data.nickname;
   document.getElementById("rPhone").textContent=data.phone;
-  resEl.style.display="block";
+  resEl.style.display="flex";
   if(data.already_contact){
     document.getElementById("searchBtn").textContent="Вже в контактах";
     document.getElementById("searchBtn").onclick=null;
@@ -376,17 +540,19 @@ async function doSearch(){
 async function doAdd(){
   if(!foundUser) return;
   await fetch(`${API}/api/contacts/add/`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Token ${token}`},body:JSON.stringify({user_id:foundUser.user_id})});
-  closeModal(); await loadContacts();
+  closeModal("addModal"); await loadContacts();
 }
 
-// WebSocket
+function closeModal(id){document.getElementById(id).style.display="none";}
+
+//WebSocket
 function connectWS(){
   ws=new WebSocket(`ws://127.0.0.1:8000/ws/chat/?token=${token}`);
   ws.onopen=()=>console.log("[WS] connected");
   ws.onclose=()=>{console.log("[WS] reconnecting…");setTimeout(connectWS,2000);};
   ws.onmessage=async e=>{
     const d=JSON.parse(e.data);
-    if(d.from!==undefined && d.ciphertext){
+    if(d.from!==undefined&&d.ciphertext){
       const sid=d.from;
       if(!sharedKeys[sid]) await computeSharedKey(sid);
       if(activeUserId===sid) await renderMessage(d.ciphertext,"received");
@@ -394,24 +560,26 @@ function connectWS(){
   };
 }
 
+//Session 
 function clearSession(){
-  localStorage.removeItem("token"); localStorage.removeItem("myId");
-  localStorage.removeItem("myNick"); localStorage.removeItem("myDisplay");
   if(myId){
     localStorage.removeItem("eccPrivKey_"+myId);
     localStorage.removeItem("eccPubX_"+myId);
     localStorage.removeItem("eccPubY_"+myId);
   }
-  token=null; myId=null; myNick=""; myDisplay="";
+  ["token","myId","myNick","myDisplay","myAvatar"].forEach(k=>localStorage.removeItem(k));
+  token=null; myId=null; myNick=""; myDisplay=""; myAvatar="bob";
 }
 
-function showAuth(){document.getElementById("authScreen").style.display="flex";}
+function showAuth(){document.getElementById("authScreen").style.display="flex"; renderAuthForm();}
 
 async function tryAutoLogin(){
   if(!token||!myId){showAuth();return;}
   try{
     const res=await fetch(`${API}/api/me/`,{headers:{"Authorization":`Token ${token}`}});
     if(!res.ok){clearSession();showAuth();return;}
+    const d=await res.json();
+    if(d.avatar) { myAvatar=d.avatar; localStorage.setItem("myAvatar",myAvatar); }
     await initApp();
   }catch(e){showAuth();}
 }
