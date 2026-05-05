@@ -1,6 +1,8 @@
 """Module providing functions for RSA implementation"""
 
 import random
+import hashlib
+
 
 def gcd(num1, num2):
     """Calculates greatecst common divisor of num1 and num2"""
@@ -89,3 +91,22 @@ def decrypt(c, d, n):
 
     # Assemble message back to a string
     return "".join(message)
+
+def sign_bytes(data: bytes, d: int, n: int) -> int:
+    """
+    Sign arbitrary bytes with RSA private key.
+    Hashes the data to an integer, then applies RSA private-key operation
+    """
+    digest = int(hashlib.sha256(data).hexdigest(), 16)
+    digest %= n
+    return power(digest, d, n)
+
+
+def verify_bytes(data: bytes, signature: int, e: int, n: int) -> bool:
+    """
+    Verify an RSA signature over bytes with public key (e, n).
+    Returns True if the signature is valid
+    """
+    digest = int(hashlib.sha256(data).hexdigest(), 16) % n
+    recovered = power(signature, e, n)
+    return digest == recovered
