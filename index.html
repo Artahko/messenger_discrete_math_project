@@ -7,7 +7,6 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a1628; color: #fff; height: 100vh; display: flex; overflow: hidden; }
-
     .sidebar { width: 320px; flex-shrink: 0; background: #0d1b2e; border-right: 1px solid #1a2942; display: flex; flex-direction: column; }
     .sidebar-header { padding: 18px 16px 14px; border-bottom: 1px solid #1a2942; }
     .sidebar-header h1 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
@@ -16,7 +15,7 @@
     .search-input { flex: 1; background: #0a1628; color: #fff; border: 1px solid #1a2942; border-radius: 10px; padding: 9px 14px; font-size: 14px; outline: none; transition: border-color .15s; }
     .search-input:focus { border-color: #2563eb; }
     .search-input::placeholder { color: #4a5f7f; }
-    .add-btn { background: #2563eb; border: none; border-radius: 10px; padding: 0 14px; color: #fff; font-size: 20px; cursor: pointer; transition: background .15s; }
+    .add-btn { background: #2563eb; border: none; border-radius: 10px; padding: 0 14px; color: #fff; font-size: 20px; cursor: pointer; }
     .add-btn:hover { background: #1d4ed8; }
     .chat-list { flex: 1; overflow-y: auto; }
     .chat-list::-webkit-scrollbar { width: 4px; }
@@ -27,7 +26,6 @@
     .avatar { width: 44px; height: 44px; border-radius: 50%; background: #1e3a5f; color: #60a5fa; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .chat-name { font-size: 15px; font-weight: 500; }
     .chat-nick { font-size: 12px; color: #4a5f7f; margin-top: 2px; }
-
     .chat-area { flex: 1; display: flex; flex-direction: column; }
     .chat-header { padding: 14px 20px; border-bottom: 1px solid #1a2942; display: flex; align-items: center; gap: 12px; }
     .chat-header .avatar { width: 38px; height: 38px; font-size: 11px; }
@@ -48,7 +46,6 @@
     .send-btn { background: #2563eb; border: none; border-radius: 12px; padding: 12px 20px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
     .send-btn:hover { background: #1d4ed8; }
     .no-chat { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #4a5f7f; }
-
     .auth-screen { position: fixed; inset: 0; background: #0a1628; display: flex; align-items: center; justify-content: center; z-index: 100; }
     .auth-box { background: #0d1b2e; border: 1px solid #1a2942; border-radius: 20px; padding: 36px; width: 400px; }
     .auth-box h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
@@ -63,7 +60,6 @@
     .auth-switch { text-align: center; color: #4a5f7f; font-size: 13px; margin-top: 14px; }
     .auth-switch a { color: #60a5fa; cursor: pointer; }
     .global-err { color: #f87171; font-size: 13px; margin-bottom: 10px; }
-
     .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 200; }
     .modal { background: #0d1b2e; border: 1px solid #1a2942; border-radius: 16px; padding: 28px; width: 360px; }
     .modal h3 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
@@ -87,6 +83,7 @@
 <div class="auth-screen" id="authScreen">
   <div class="auth-box">
     <h2 id="authTitle">Увійти</h2>
+    <div class="subtitle">Всі повідомлення шифруються ECC + AES-256</div>
     <div class="global-err" id="globalErr" style="display:none"></div>
     <div id="authFields"></div>
     <button class="auth-btn" id="authBtn">Увійти</button>
@@ -116,6 +113,7 @@
 
 <div class="sidebar">
   <div class="sidebar-header">
+    <h1>Bello 🔐</h1>
     <div class="sidebar-me" id="sidebarMe"></div>
     <div class="search-wrap">
       <input class="search-input" id="filterInput" placeholder="Фільтр контактів..." />
@@ -135,32 +133,30 @@
 </div>
 
 <script>
-
-
+//ECC secp256k1
 const ECC = (() => {
   const a=0n, p=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
   const Gx=55066263022277343669578718895168534326250603453777594175500187360389116729240n;
   const Gy=32670510020758816978083085130507043184471273380659243275938904335757337482424n;
   const n=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
   const G=[Gx,Gy];
-  const modpow=(b,e,m)=>{let r=1n;b%=m;while(e>0n){if(e&1n)r=r*b%m;b=b*b%m;e>>=1n;}return r;};
-  const inv=(x,m)=>modpow(((x%m)+m)%m,m-2n,m);
+  const mp=(b,e,m)=>{let r=1n;b%=m;while(e>0n){if(e&1n)r=r*b%m;b=b*b%m;e>>=1n;}return r;};
+  const inv=(x,m)=>mp(((x%m)+m)%m,m-2n,m);
   const addP=(P,Q)=>{if(!P)return Q;if(!Q)return P;let s;if(P[0]===Q[0]&&P[1]===Q[1]){s=(3n*P[0]**2n+a)*inv(2n*P[1],p)%p;}else{if(P[0]===Q[0])return null;s=(Q[1]-P[1])*inv(Q[0]-P[0],p)%p;}const x=((s**2n-P[0]-Q[0])%p+p)%p,y=((s*(P[0]-x)-P[1])%p+p)%p;return[x,y];};
   const mul=(k,P)=>{let R=null,Q=P;while(k>0n){if(k&1n)R=addP(R,Q);Q=addP(Q,Q);k>>=1n;}return R;};
-  const genKeys=()=>{const a=new Uint8Array(32);crypto.getRandomValues(a);let d=0n;for(const b of a)d=(d<<8n)|BigInt(b);d=(d%(n-1n))+1n;return{d,Q:mul(d,G)};};
+  const genKeys=()=>{const arr=new Uint8Array(32);crypto.getRandomValues(arr);let d=0n;for(const b of arr)d=(d<<8n)|BigInt(b);d=(d%(n-1n))+1n;return{d,Q:mul(d,G)};};
   const shared=(Qo,ds)=>{const pt=mul(ds,Qo);const xs=pt[0].toString().padStart(32,'0').slice(0,32);return new TextEncoder().encode(xs);};
   return{genKeys,shared};
 })();
 
-
+//AES-CBC
 const AES={
   async imp(k){return crypto.subtle.importKey("raw",k,{name:"AES-CBC"},false,["encrypt","decrypt"]);},
   async enc(kb,pt){const k=await this.imp(kb),iv=crypto.getRandomValues(new Uint8Array(16)),ct=await crypto.subtle.encrypt({name:"AES-CBC",iv},k,new TextEncoder().encode(pt)),r=new Uint8Array(16+ct.byteLength);r.set(iv);r.set(new Uint8Array(ct),16);return r;},
   async dec(kb,d){const k=await this.imp(kb),pt=await crypto.subtle.decrypt({name:"AES-CBC",iv:d.slice(0,16)},k,d.slice(16));return new TextDecoder().decode(pt);}
 };
 
-
-
+// State
 const API="http://127.0.0.1:8000";
 let token=localStorage.getItem("token");
 let myId=+localStorage.getItem("myId")||null;
@@ -168,119 +164,87 @@ let myNick=localStorage.getItem("myNick")||"";
 let myDisplay=localStorage.getItem("myDisplay")||"";
 let myPrivKey=null, myPubKey=null;
 const sharedKeys={};
-let ws=null, activeUserId=null, activeContact=null;
-let contacts=[];
-let foundUser=null;
+let ws=null, activeUserId=null;
+let contacts=[], foundUser=null;
 
-
+//Auth
 let authMode="login";
-
 const loginFields=`
-  <div class="field">
-    <label>Нікнейм або телефон</label>
-    <input id="f_login" placeholder="@nick або +380..." />
-    <div class="field-err" id="e_login"></div>
-  </div>
-  <div class="field">
-    <label>Пароль</label>
-    <input id="f_password" type="password" placeholder="••••••" />
-    <div class="field-err" id="e_password"></div>
-  </div>`;
-
+  <div class="field"><label>Нікнейм або телефон</label><input id="f_login" placeholder="@nick або +380..."/><div class="field-err" id="e_login"></div></div>
+  <div class="field"><label>Пароль</label><input id="f_password" type="password" placeholder="••••••"/><div class="field-err" id="e_password"></div></div>`;
 const registerFields=`
-  <div class="field">
-    <label>Нікнейм (унікальний)</label>
-    <input id="f_nickname" placeholder="my_nick_123" />
-    <div class="field-err" id="e_nickname"></div>
-  </div>
-  <div class="field">
-    <label>Імʼя</label>
-    <input id="f_display_name" placeholder="Олексій" />
-    <div class="field-err" id="e_display_name"></div>
-  </div>
-  <div class="field">
-    <label>Телефон</label>
-    <input id="f_phone" placeholder="+380XXXXXXXXX" />
-    <div class="field-err" id="e_phone"></div>
-  </div>
-  <div class="field">
-    <label>Пароль (мін. 6 символів)</label>
-    <input id="f_password" type="password" placeholder="••••••••" />
-    <div class="field-err" id="e_password"></div>
-  </div>`;
+  <div class="field"><label>Нікнейм (унікальний)</label><input id="f_nickname" placeholder="my_nick_123"/><div class="field-err" id="e_nickname"></div></div>
+  <div class="field"><label>Імʼя</label><input id="f_display_name" placeholder="Олексій"/><div class="field-err" id="e_display_name"></div></div>
+  <div class="field"><label>Телефон</label><input id="f_phone" placeholder="+380XXXXXXXXX"/><div class="field-err" id="e_phone"></div></div>
+  <div class="field"><label>Пароль (мін. 6 символів)</label><input id="f_password" type="password" placeholder="••••••••"/><div class="field-err" id="e_password"></div></div>`;
 
 function renderAuthForm(){
-  const isLogin=authMode==="login";
-  document.getElementById("authTitle").textContent=isLogin?"Увійти":"Реєстрація";
-  document.getElementById("authBtn").textContent=isLogin?"Увійти":"Зареєструватися";
-  document.getElementById("authSwitchText").textContent=isLogin?"Немає акаунту?":"Вже є акаунт?";
-  document.getElementById("authSwitchLink").textContent=isLogin?" Зареєструватися":" Увійти";
-  document.getElementById("authFields").innerHTML=isLogin?loginFields:registerFields;
+  const il=authMode==="login";
+  document.getElementById("authTitle").textContent=il?"Увійти":"Реєстрація";
+  document.getElementById("authBtn").textContent=il?"Увійти":"Зареєструватися";
+  document.getElementById("authSwitchText").textContent=il?"Немає акаунту?":"Вже є акаунт?";
+  document.getElementById("authSwitchLink").textContent=il?" Зареєструватися":" Увійти";
+  document.getElementById("authFields").innerHTML=il?loginFields:registerFields;
   document.getElementById("globalErr").style.display="none";
 }
 renderAuthForm();
-
-document.getElementById("authSwitchLink").onclick=()=>{
-  authMode=authMode==="login"?"register":"login";
-  renderAuthForm();
-};
+document.getElementById("authSwitchLink").onclick=()=>{authMode=authMode==="login"?"register":"login";renderAuthForm();};
 
 document.getElementById("authBtn").onclick=async()=>{
-  const globalErr=document.getElementById("globalErr");
-  globalErr.style.display="none";
-
+  const ge=document.getElementById("globalErr"); ge.style.display="none";
   if(authMode==="login"){
     const login=document.getElementById("f_login").value.trim();
     const password=document.getElementById("f_password").value;
     const res=await fetch(`${API}/api/login/`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({login,password})});
     const data=await res.json();
-    if(!res.ok){globalErr.textContent=data.error||"Помилка";globalErr.style.display="block";return;}
+    if(!res.ok){ge.textContent=data.error||"Помилка";ge.style.display="block";return;}
     saveSession(data); await initApp();
   } else {
     const nickname=document.getElementById("f_nickname").value.trim();
     const display_name=document.getElementById("f_display_name").value.trim();
     const phone=document.getElementById("f_phone").value.trim();
     const password=document.getElementById("f_password").value;
-
-    ["nickname","display_name","phone","password"].forEach(f=>{
-      const el=document.getElementById("e_"+f); if(el) el.textContent="";
-    });
-
+    ["nickname","display_name","phone","password"].forEach(f=>{const el=document.getElementById("e_"+f);if(el)el.textContent="";});
     const res=await fetch(`${API}/api/register/`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nickname,display_name,phone,password})});
     const data=await res.json();
     if(!res.ok){
-      if(data.errors){
-        Object.entries(data.errors).forEach(([k,v])=>{
-          const el=document.getElementById("e_"+k); if(el) el.textContent=v;
-        });
-      } else {globalErr.textContent=data.error||"Помилка";globalErr.style.display="block";}
+      if(data.errors){Object.entries(data.errors).forEach(([k,v])=>{const el=document.getElementById("e_"+k);if(el)el.textContent=v;});}
+      else{ge.textContent=data.error||"Помилка";ge.style.display="block";}
       return;
     }
     saveSession(data); await initApp();
   }
 };
 
-function saveSession(data){
-  token=data.token; myId=data.user_id;
-  myNick=data.nickname; myDisplay=data.display_name;
-  localStorage.setItem("token",token);
-  localStorage.setItem("myId",myId);
-  localStorage.setItem("myNick",myNick);
-  localStorage.setItem("myDisplay",myDisplay);
+function saveSession(d){
+  token=d.token; myId=d.user_id; myNick=d.nickname; myDisplay=d.display_name;
+  localStorage.setItem("token",token); localStorage.setItem("myId",myId);
+  localStorage.setItem("myNick",myNick); localStorage.setItem("myDisplay",myDisplay);
 }
 
+//Init
 async function initApp(){
   document.getElementById("authScreen").style.display="none";
   document.getElementById("sidebarMe").textContent=`@${myNick} · ${myDisplay}`;
 
-  const kp=ECC.genKeys(); myPrivKey=kp.d; myPubKey=kp.Q;
-  await fetch(`${API}/api/keys/upload/`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Token ${token}`},body:JSON.stringify({x:myPubKey[0].toString(),y:myPubKey[1].toString()})});
+  const sk=localStorage.getItem("eccPrivKey_"+myId);
+  const sx=localStorage.getItem("eccPubX_"+myId);
+  const sy=localStorage.getItem("eccPubY_"+myId);
+  if(sk&&sx&&sy){
+    myPrivKey=BigInt(sk); myPubKey=[BigInt(sx),BigInt(sy)];
+  } else {
+    const kp=ECC.genKeys(); myPrivKey=kp.d; myPubKey=kp.Q;
+    localStorage.setItem("eccPrivKey_"+myId, myPrivKey.toString());
+    localStorage.setItem("eccPubX_"+myId, myPubKey[0].toString());
+    localStorage.setItem("eccPubY_"+myId, myPubKey[1].toString());
+  }
 
+  await fetch(`${API}/api/keys/upload/`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Token ${token}`},body:JSON.stringify({x:myPubKey[0].toString(),y:myPubKey[1].toString()})});
   await loadContacts();
   connectWS();
 }
 
-
+// Contacts
 async function loadContacts(){
   const res=await fetch(`${API}/api/contacts/`,{headers:{"Authorization":`Token ${token}`}});
   contacts=await res.json();
@@ -288,23 +252,13 @@ async function loadContacts(){
 }
 
 function renderContacts(list){
-  const el=document.getElementById("chatList");
-  el.innerHTML="";
-  if(!list.length){
-    el.innerHTML=`<div style="padding:20px;color:#4a5f7f;font-size:13px;text-align:center">Немає контактів.<br>Натисніть + щоб додати.</div>`;
-    return;
-  }
+  const el=document.getElementById("chatList"); el.innerHTML="";
+  if(!list.length){el.innerHTML=`<div style="padding:20px;color:#4a5f7f;font-size:13px;text-align:center">Немає контактів.<br>Натисніть + щоб додати.</div>`;return;}
   list.forEach(c=>{
     const div=document.createElement("div");
     div.className="chat-item"+(c.user_id===activeUserId?" active":"");
-    div.innerHTML=`<div class="chat-item-inner">
-      <div class="avatar">${c.display_name.slice(0,2).toUpperCase()}</div>
-      <div>
-        <div class="chat-name">${esc(c.display_name)}</div>
-        <div class="chat-nick">@${esc(c.nickname)}</div>
-      </div>
-    </div>`;
-    div.onclick=()=>openChat(c, div);
+    div.innerHTML=`<div class="chat-item-inner"><div class="avatar">${c.display_name.slice(0,2).toUpperCase()}</div><div><div class="chat-name">${esc(c.display_name)}</div><div class="chat-nick">@${esc(c.nickname)}</div></div></div>`;
+    div.onclick=()=>openChat(c,div);
     el.appendChild(div);
   });
 }
@@ -314,21 +268,18 @@ document.getElementById("filterInput").oninput=e=>{
   renderContacts(contacts.filter(c=>c.nickname.toLowerCase().includes(q)||c.display_name.toLowerCase().includes(q)));
 };
 
+// Chat
 async function openChat(contact, el){
-  activeUserId=contact.user_id; activeContact=contact;
+  activeUserId=contact.user_id;
   document.querySelectorAll(".chat-item").forEach(i=>i.classList.remove("active"));
   if(el) el.classList.add("active");
-
   if(!sharedKeys[contact.user_id]) await computeSharedKey(contact.user_id);
 
   const ca=document.getElementById("chatArea");
   ca.innerHTML=`
     <div class="chat-header">
       <div class="avatar">${contact.display_name.slice(0,2).toUpperCase()}</div>
-      <div class="chat-header-info">
-        <h2>${esc(contact.display_name)}</h2>
-        <p>@${esc(contact.nickname)} · ${esc(contact.phone)}</p>
-      </div>
+      <div class="chat-header-info"><h2>${esc(contact.display_name)}</h2><p>@${esc(contact.nickname)} · ${esc(contact.phone)}</p></div>
       <div class="lock-badge">🔒 E2E</div>
     </div>
     <div class="messages" id="messages"></div>
@@ -337,13 +288,11 @@ async function openChat(contact, el){
       <button class="send-btn" onclick="sendMessage()">➤</button>
     </div>`;
 
-  document.getElementById("msgInput").onkeydown=e=>{
-    if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}
-  };
+  document.getElementById("msgInput").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}};
 
   const res=await fetch(`${API}/api/messages/${contact.user_id}/`,{headers:{"Authorization":`Token ${token}`}});
   const history=await res.json();
-  for(const m of history) await displayMessage(m.ciphertext, m.from===myId?"sent":"received", new Date(m.timestamp));
+  for(const m of history) await renderMessage(m.ciphertext, m.from===myId?"sent":"received", new Date(m.timestamp));
 }
 
 async function computeSharedKey(uid){
@@ -353,7 +302,7 @@ async function computeSharedKey(uid){
   sharedKeys[uid]=ECC.shared([BigInt(d.x),BigInt(d.y)],myPrivKey);
 }
 
-
+//Send / render
 async function sendMessage(){
   const inp=document.getElementById("msgInput");
   const text=inp.value.trim();
@@ -361,25 +310,26 @@ async function sendMessage(){
   inp.value="";
 
   const kb=sharedKeys[activeUserId];
-  if(!kb){alert("Немає ключа — зачекайте");return;}
+  if(!kb){alert("Немає ключа — зачекайте поки співрозмовник онлайн");return;}
 
   const cb=await AES.enc(kb,text);
   const b64=btoa(String.fromCharCode(...cb));
 
+  await renderMessage(b64,"sent");
+
   if(ws&&ws.readyState===WebSocket.OPEN){
     ws.send(JSON.stringify({to:activeUserId,ciphertext:b64}));
   }
-  await displayMessage(b64,"sent");
 }
 
-async function displayMessage(b64,dir,time=new Date()){
-  const c=document.getElementById("messages");
-  if(!c) return;
+async function renderMessage(b64, dir, time=new Date()){
+  const c=document.getElementById("messages"); if(!c) return;
   let text="[не вдалося розшифрувати]";
   try{
-    const kb=sharedKeys[activeUserId];
+    const uid = dir==="sent" ? activeUserId : activeUserId;
+    const kb=sharedKeys[uid];
     if(kb){const cb=Uint8Array.from(atob(b64),x=>x.charCodeAt(0));text=await AES.dec(kb,cb);}
-  }catch(e){console.warn(e);}
+  }catch(e){console.warn("decrypt error",e);}
   const div=document.createElement("div");
   div.className=`msg ${dir}`;
   div.innerHTML=`${esc(text)}<div class="meta">${time.toLocaleTimeString("uk",{hour:"2-digit",minute:"2-digit"})}</div>`;
@@ -387,7 +337,7 @@ async function displayMessage(b64,dir,time=new Date()){
   c.scrollTop=c.scrollHeight;
 }
 
-
+//Modal
 function openModal(){
   document.getElementById("addModal").style.display="flex";
   document.getElementById("searchQ").value="";
@@ -404,23 +354,16 @@ async function doSearch(){
   const errEl=document.getElementById("searchErr");
   const resEl=document.getElementById("searchResult");
   errEl.style.display="none"; resEl.style.display="none";
-
   if(!q){errEl.textContent="Введіть нікнейм або телефон";errEl.style.display="block";return;}
-
   const res=await fetch(`${API}/api/search/?q=${encodeURIComponent(q)}`,{headers:{"Authorization":`Token ${token}`}});
+  if(!res.ok){errEl.textContent="Помилка сервера";errEl.style.display="block";return;}
   const data=await res.json();
-
-  if(!data.found){
-    errEl.textContent=data.error||"Користувача не знайдено";
-    errEl.style.display="block"; return;
-  }
-
+  if(!data.found){errEl.textContent=data.error||"Користувача не знайдено";errEl.style.display="block";return;}
   foundUser=data;
   document.getElementById("rName").textContent=data.display_name;
   document.getElementById("rNick").textContent="@"+data.nickname;
   document.getElementById("rPhone").textContent=data.phone;
   resEl.style.display="block";
-
   if(data.already_contact){
     document.getElementById("searchBtn").textContent="Вже в контактах";
     document.getElementById("searchBtn").onclick=null;
@@ -433,28 +376,49 @@ async function doSearch(){
 async function doAdd(){
   if(!foundUser) return;
   await fetch(`${API}/api/contacts/add/`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Token ${token}`},body:JSON.stringify({user_id:foundUser.user_id})});
-  closeModal();
-  await loadContacts();
+  closeModal(); await loadContacts();
 }
 
-
+// WebSocket
 function connectWS(){
   ws=new WebSocket(`ws://127.0.0.1:8000/ws/chat/?token=${token}`);
   ws.onopen=()=>console.log("[WS] connected");
   ws.onclose=()=>{console.log("[WS] reconnecting…");setTimeout(connectWS,2000);};
   ws.onmessage=async e=>{
     const d=JSON.parse(e.data);
-    if(d.from&&d.ciphertext){
+    if(d.from!==undefined && d.ciphertext){
       const sid=d.from;
       if(!sharedKeys[sid]) await computeSharedKey(sid);
-      if(activeUserId===sid) await displayMessage(d.ciphertext,"received");
+      if(activeUserId===sid) await renderMessage(d.ciphertext,"received");
     }
   };
 }
 
+function clearSession(){
+  localStorage.removeItem("token"); localStorage.removeItem("myId");
+  localStorage.removeItem("myNick"); localStorage.removeItem("myDisplay");
+  if(myId){
+    localStorage.removeItem("eccPrivKey_"+myId);
+    localStorage.removeItem("eccPubX_"+myId);
+    localStorage.removeItem("eccPubY_"+myId);
+  }
+  token=null; myId=null; myNick=""; myDisplay="";
+}
+
+function showAuth(){document.getElementById("authScreen").style.display="flex";}
+
+async function tryAutoLogin(){
+  if(!token||!myId){showAuth();return;}
+  try{
+    const res=await fetch(`${API}/api/me/`,{headers:{"Authorization":`Token ${token}`}});
+    if(!res.ok){clearSession();showAuth();return;}
+    await initApp();
+  }catch(e){showAuth();}
+}
+
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 
-if(token&&myId) initApp();
+tryAutoLogin();
 </script>
 </body>
 </html>

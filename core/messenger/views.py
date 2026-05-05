@@ -8,8 +8,6 @@ from rest_framework.authtoken.models import Token
 from .models import UserProfile, Contact, Message
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
-
 def profile_data(profile):
     return {
         "user_id": profile.user_id,
@@ -18,22 +16,15 @@ def profile_data(profile):
         "phone": profile.phone,
     }
 
-
-# ── Auth ──────────────────────────────────────────────────────────────────────
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register(request):
-    """
-    POST /api/register/
-    Body: { nickname, display_name, phone, password }
-    """
+
     nickname     = request.data.get("nickname", "").strip()
     display_name = request.data.get("display_name", "").strip()
     phone        = request.data.get("phone", "").strip()
     password     = request.data.get("password", "")
 
-    # ── validation ────────────────────────────────────────────────────────────
     errors = {}
 
     if not nickname:
@@ -59,7 +50,6 @@ def register(request):
     if errors:
         return Response({"errors": errors}, status=400)
 
-    # ── create ────────────────────────────────────────────────────────────────
     user = User.objects.create_user(username=nickname.lower(), password=password)
     UserProfile.objects.create(
         user=user,
@@ -79,17 +69,13 @@ def register(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
-    """
-    POST /api/login/
-    Body: { login, password }  — login = нік або телефон
-    """
+
     login    = request.data.get("login", "").strip()
     password = request.data.get("password", "")
 
     if not login or not password:
         return Response({"error": "Введіть логін та пароль"}, status=400)
 
-    # знайти профіль по ніку або телефону
     try:
         if login.startswith("+") or login.isdigit():
             profile = UserProfile.objects.get(phone=login)
@@ -111,7 +97,22 @@ def login_view(request):
     })
 
 
-# ── ECC keys ──────────────────────────────────────────────────────────────────
+# Me (token check)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me(request):
+    try:
+        profile = request.user.profile
+        return Response({
+            "user_id": request.user.id,
+            "nickname": profile.nickname,
+            "display_name": profile.display_name,
+        })
+    except UserProfile.DoesNotExist:
+        return Response({"user_id": request.user.id, "nickname": "", "display_name": ""})
+
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -139,15 +140,9 @@ def get_public_key(request, user_id):
     return Response({"user_id": user_id, "x": str(Q[0]), "y": str(Q[1])})
 
 
-# ── Contacts ──────────────────────────────────────────────────────────────────
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def search_user(request):
-    """
-    GET /api/search/?q=<нік або телефон>
-    Шукає користувача по ніку або телефону.
-    """
     q = request.GET.get("q", "").strip()
     if not q:
         return Response({"error": "Введіть нік або номер"}, status=400)
@@ -192,7 +187,7 @@ def add_contact(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_contacts(request):
-    """GET /api/contacts/ — список контактів поточного юзера."""
+    """GET /api/contacts/"""
     contacts = Contact.objects.filter(owner=request.user).select_related("contact__profile")
     result = []
     for c in contacts:
@@ -203,8 +198,7 @@ def list_contacts(request):
     return Response(result)
 
 
-# ── Messages ──────────────────────────────────────────────────────────────────
-
+#Messages
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def message_history(request, user_id):

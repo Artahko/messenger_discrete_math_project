@@ -8,6 +8,7 @@ urlpatterns = [
     # Auth
     path("api/register/", views.register),
     path("api/login/", views.login_view),
+    path("api/me/", views.me),
 
     # ECC keys
     path("api/keys/upload/", views.upload_public_key),
