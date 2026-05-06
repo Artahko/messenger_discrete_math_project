@@ -269,30 +269,45 @@ document.getElementById("filterInput").oninput=e=>{
 };
 
 // Chat
-async function openChat(contact, el){
-  activeUserId=contact.user_id;
-  document.querySelectorAll(".chat-item").forEach(i=>i.classList.remove("active"));
-  if(el) el.classList.add("active");
-  if(!sharedKeys[contact.user_id]) await computeSharedKey(contact.user_id);
+async function openChat(contact, el) {
+  activeUserId = contact.user_id;
+  document.querySelectorAll(".chat-item").forEach(i => i.classList.remove("active"));
+  if (el) el.classList.add("active");
+  if (!sharedKeys[contact.user_id]) await computeSharedKey(contact.user_id);
 
-  const ca=document.getElementById("chatArea");
-  ca.innerHTML=`
+  const ca = document.getElementById("chatArea");
+  ca.innerHTML = `
     <div class="chat-header">
-      <div class="avatar">${contact.display_name.slice(0,2).toUpperCase()}</div>
+      <div class="avatar">${contact.display_name.slice(0, 2).toUpperCase()}</div>
       <div class="chat-header-info"><h2>${esc(contact.display_name)}</h2><p>@${esc(contact.nickname)} · ${esc(contact.phone)}</p></div>
       <div class="lock-badge">🔒 E2E</div>
     </div>
     <div class="messages" id="messages"></div>
     <div class="input-area">
+      <label class="file-btn" title="Надіслати файл">
+        📎<input type="file" id="fileInput" style="display:none" onchange="sendFile(this)" />
+      </label>
       <textarea class="msg-input" id="msgInput" placeholder="Повідомлення..." rows="1"></textarea>
       <button class="send-btn" onclick="sendMessage()">➤</button>
     </div>`;
 
-  document.getElementById("msgInput").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}};
+  document.getElementById("msgInput").onkeydown = e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
 
-  const res=await fetch(`${API}/api/messages/${contact.user_id}/`,{headers:{"Authorization":`Token ${token}`}});
-  const history=await res.json();
-  for(const m of history) await renderMessage(m.ciphertext, m.from===myId?"sent":"received", new Date(m.timestamp));
+  const res = await fetch(`${API}/api/messages/${contact.user_id}/`, { headers: { "Authorization": `Token ${token}` } });
+  const history = await res.json();
+
+  for (const m of history) {
+    const dir = m.from === myId ? "sent" : "received";
+    const kb = sharedKeys[contact.user_id];
+
+    if (m.message_id && m.file_name) {
+      await displayFile(m.message_id, m.file_name, m.file_type, dir, kb);
+    } else if (m.ciphertext) {
+      await renderMessage(m.ciphertext, dir, new Date(m.timestamp));
+    }
+  }
 }
 
 async function computeSharedKey(uid){
@@ -319,6 +334,42 @@ async function sendMessage(){
 
   if(ws&&ws.readyState===WebSocket.OPEN){
     ws.send(JSON.stringify({to:activeUserId,ciphertext:b64}));
+  }
+}
+
+async function sendFile(input) {
+  const file = input.files[0];
+  if (!file || !activeUserId) return;
+  input.value = "";
+
+  const kb = sharedKeys[activeUserId];
+  if (!kb) { alert("Немає ключа — зачекайте поки співрозмовник онлайн"); return; }
+
+  const fileBytes = new Uint8Array(await file.arrayBuffer());
+  const k = await crypto.subtle.importKey("raw", kb, { name: "AES-CBC" }, false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(16));
+  const ct = await crypto.subtle.encrypt({ name: "AES-CBC", iv }, k, fileBytes);
+
+  const encrypted = new Uint8Array(16 + ct.byteLength);
+  encrypted.set(iv);
+  encrypted.set(new Uint8Array(ct), 16);
+
+  const blob = new Blob([encrypted], { type: "application/octet-stream" });
+  const formData = new FormData();
+  formData.append("to", activeUserId);
+  formData.append("file", blob, file.name);
+  formData.append("file_name", file.name);
+  formData.append("file_type", file.type);
+
+  const res = await fetch(`${API}/api/messages/file/`, {
+    method: "POST",
+    headers: { "Authorization": `Token ${token}` },
+    body: formData
+  });
+
+  const data = await res.json();
+  if (data.message_id) {
+    await displayFile(data.message_id, file.name, file.type, "sent", kb);
   }
 }
 
@@ -380,18 +431,66 @@ async function doAdd(){
 }
 
 // WebSocket
-function connectWS(){
-  ws=new WebSocket(`ws://127.0.0.1:8000/ws/chat/?token=${token}`);
-  ws.onopen=()=>console.log("[WS] connected");
-  ws.onclose=()=>{console.log("[WS] reconnecting…");setTimeout(connectWS,2000);};
-  ws.onmessage=async e=>{
-    const d=JSON.parse(e.data);
-    if(d.from!==undefined && d.ciphertext){
-      const sid=d.from;
-      if(!sharedKeys[sid]) await computeSharedKey(sid);
-      if(activeUserId===sid) await renderMessage(d.ciphertext,"received");
+function connectWS() {
+  ws = new WebSocket(`ws://127.0.0.1:8000/ws/chat/?token=${token}`);
+  ws.onopen = () => console.log("[WS] connected");
+  ws.onclose = () => { console.log("[WS] reconnecting…"); setTimeout(connectWS, 2000); };
+  ws.onmessage = async e => {
+    const d = JSON.parse(e.data);
+
+    if (d.from !== undefined && d.ciphertext) {
+      const sid = d.from;
+      if (!sharedKeys[sid]) await computeSharedKey(sid);
+      if (activeUserId === sid) await renderMessage(d.ciphertext, "received");
+    }
+
+    if (d.from !== undefined && d.message_id) {
+      const sid = d.from;
+      if (!sharedKeys[sid]) await computeSharedKey(sid);
+      if (activeUserId === sid) {
+        await displayFile(d.message_id, d.file_name, d.file_type, "received", sharedKeys[sid]);
+      }
     }
   };
+}
+
+async function displayFile(messageId, name, type, dir, kb) {
+  const c = document.getElementById("messages");
+  if (!c) return;
+
+  const div = document.createElement("div");
+  div.className = `msg ${dir}`;
+
+  try {
+    const res = await fetch(`${API}/api/messages/download/${messageId}/`, {
+      headers: { "Authorization": `Token ${token}` }
+    });
+
+    const encrypted = new Uint8Array(await res.arrayBuffer());
+
+    const k = await crypto.subtle.importKey("raw", kb, { name: "AES-CBC" }, false, ["decrypt"]);
+    const iv = encrypted.slice(0, 16);
+    const ct = encrypted.slice(16);
+    const plainBytes = await crypto.subtle.decrypt({ name: "AES-CBC", iv }, k, ct);
+
+    const blob = new Blob([plainBytes], { type: type || "application/octet-stream" });
+    const objectUrl = URL.createObjectURL(blob);
+
+    let content;
+    if (type && type.startsWith("image/")) {
+      content = `<img src="${objectUrl}" style="max-width:100%;border-radius:8px;display:block;" />`;
+    } else {
+      content = `<a href="${objectUrl}" download="${esc(name)}" style="color:#60a5fa;text-decoration:none;">📎 ${esc(name)}</a>`;
+    }
+
+    div.innerHTML = `${content}<div class="meta">${new Date().toLocaleTimeString("uk", { hour: "2-digit", minute: "2-digit" })}</div>`;
+  } catch(e) {
+    div.innerHTML = `<span style="color:#f87171;">📎 [не вдалося розшифрувати файл]</span>`;
+    console.warn("file decrypt error", e);
+  }
+
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
 }
 
 function clearSession(){

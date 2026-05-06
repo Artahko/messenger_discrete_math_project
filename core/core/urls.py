@@ -21,4 +21,8 @@ urlpatterns = [
 
     # Messages
     path("api/messages/<int:user_id>/", views.message_history),
+
+    # Media
+    path("api/messages/file/", views.send_file),
+    path("api/messages/download/<int:message_id>/", views.download_file),
 ]

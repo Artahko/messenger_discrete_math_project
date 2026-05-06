@@ -68,8 +68,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             "from": event["from"],
-            "ciphertext": event["ciphertext"],
+            "from_username": event.get("from_username", ""),
+            "ciphertext": event.get("ciphertext", ""),
             "rsa_signature": event.get("rsa_signature", ""),
+            "message_id": event.get("message_id"),
+            "file_name": event.get("file_name", ""),
+            "file_type": event.get("file_type", ""),
         }))
 
     @sync_to_async

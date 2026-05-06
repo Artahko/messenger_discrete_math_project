@@ -39,6 +39,9 @@ class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages")
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages")
     ciphertext = models.TextField()
+    file = models.FileField(upload_to="messages/%Y/%m/%d/", blank=True, null=True)
+    file_name = models.CharField(max_length=255, blank=True)
+    file_type = models.CharField(max_length=64, blank=True)
     rsa_signature = models.TextField(blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
