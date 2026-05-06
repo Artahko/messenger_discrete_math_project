@@ -224,6 +224,7 @@ def message_history(request, user_id):
     result = []
     for m in messages.order_by("timestamp"):
         result.append({
+<<<<<<< HEAD
             "id": m.id,
             "from": m.sender_id,
             "to": m.receiver_id,
@@ -309,3 +310,10 @@ def send_file(request):
         "file_name": message.file_name,
         "file_type": message.file_type,
     })
+=======
+            "id": m.id, "from": m.sender_id, "to": m.receiver_id,
+            "ciphertext": m.ciphertext, "rsa_signature": m.rsa_signature,
+            "timestamp": m.timestamp.isoformat(),
+        })
+    return Response(result)
+>>>>>>> 4cc7f630e23ea0a42220dd2e4ece857d1fead031
