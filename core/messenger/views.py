@@ -1,13 +1,13 @@
 import re
-from django.core.files.base import ContentFile
+import random
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import UserProfile, Contact, Message
 from rest_framework.parsers import MultiPartParser
+from .models import UserProfile, Contact, Message, AVATARS, AVATAR_NAMES
 
 
 def profile_data(profile):
@@ -16,19 +16,30 @@ def profile_data(profile):
         "nickname": profile.nickname,
         "display_name": profile.display_name,
         "phone": profile.phone,
+        "avatar": profile.avatar,
     }
+
+
+# auth
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me(request):
+    try:
+        profile = request.user.profile
+        return Response(profile_data(profile))
+    except UserProfile.DoesNotExist:
+        return Response({"user_id": request.user.id})
+
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register(request):
-
     nickname     = request.data.get("nickname", "").strip()
     display_name = request.data.get("display_name", "").strip()
     phone        = request.data.get("phone", "").strip()
     password     = request.data.get("password", "")
 
     errors = {}
-
     if not nickname:
         errors["nickname"] = "Нікнейм обовʼязковий"
     elif not re.match(r'^[a-zA-Z0-9_]{3,32}$', nickname):
@@ -52,26 +63,22 @@ def register(request):
     if errors:
         return Response({"errors": errors}, status=400)
 
+    avatar = random.choice(AVATARS)
     user = User.objects.create_user(username=nickname.lower(), password=password)
     UserProfile.objects.create(
-        user=user,
-        nickname=nickname,
-        display_name=display_name,
-        phone=phone,
+        user=user, nickname=nickname, display_name=display_name,
+        phone=phone, avatar=avatar,
     )
     token, _ = Token.objects.get_or_create(user=user)
     return Response({
-        "token": token.key,
-        "user_id": user.id,
-        "nickname": nickname,
-        "display_name": display_name,
+        "token": token.key, "user_id": user.id,
+        "nickname": nickname, "display_name": display_name, "avatar": avatar,
     })
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
-
     login    = request.data.get("login", "").strip()
     password = request.data.get("password", "")
 
@@ -82,7 +89,7 @@ def login_view(request):
         if login.startswith("+") or login.isdigit():
             profile = UserProfile.objects.get(phone=login)
         else:
-            profile = UserProfile.objects.get(nickname__iexact=login)
+            profile = UserProfile.objects.get(nickname__iexact=login.lstrip("@"))
         user = authenticate(username=profile.user.username, password=password)
     except UserProfile.DoesNotExist:
         user = None
@@ -92,30 +99,42 @@ def login_view(request):
 
     token, _ = Token.objects.get_or_create(user=user)
     return Response({
-        "token": token.key,
-        "user_id": user.id,
-        "nickname": profile.nickname,
-        "display_name": profile.display_name,
+        "token": token.key, "user_id": user.id,
+        "nickname": profile.nickname, "display_name": profile.display_name,
+        "avatar": profile.avatar,
     })
 
 
-# Me (token check)
+#account
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    """DELETE /api/account/"""
+    request.user.delete()
+    return Response({"status": "deleted"})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_avatar(request):
+    """POST /api/account/avatar/"""
+    avatar = request.data.get("avatar")
+    if avatar not in AVATARS:
+        return Response({"error": "Невірна аватарка"}, status=400)
+    profile = request.user.profile
+    profile.avatar = avatar
+    profile.save()
+    return Response({"avatar": avatar})
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def me(request):
-    try:
-        profile = request.user.profile
-        return Response({
-            "user_id": request.user.id,
-            "nickname": profile.nickname,
-            "display_name": profile.display_name,
-        })
-    except UserProfile.DoesNotExist:
-        return Response({"user_id": request.user.id, "nickname": "", "display_name": ""})
+def list_avatars(request):
+    """GET /api/avatars/"""
+    return Response([{"id": a, "name": AVATAR_NAMES[a]} for a in AVATARS])
 
 
-
+# ECC keys
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def upload_public_key(request):
@@ -142,13 +161,13 @@ def get_public_key(request, user_id):
     return Response({"user_id": user_id, "x": str(Q[0]), "y": str(Q[1])})
 
 
+# Contacts
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def search_user(request):
     q = request.GET.get("q", "").strip()
     if not q:
         return Response({"error": "Введіть нік або номер"}, status=400)
-
     try:
         if q.startswith("+") or q.isdigit():
             profile = UserProfile.objects.get(phone=q)
@@ -167,10 +186,6 @@ def search_user(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def add_contact(request):
-    """
-    POST /api/contacts/add/
-    Body: { user_id }
-    """
     uid = request.data.get("user_id")
     if not uid:
         return Response({"error": "user_id required"}, status=400)
@@ -178,10 +193,8 @@ def add_contact(request):
         target = User.objects.get(id=uid)
     except User.DoesNotExist:
         return Response({"error": "Користувача не знайдено"}, status=404)
-
     if target == request.user:
         return Response({"error": "Не можна додати себе"}, status=400)
-
     Contact.objects.get_or_create(owner=request.user, contact=target)
     return Response({"status": "ok"})
 
@@ -189,7 +202,6 @@ def add_contact(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_contacts(request):
-    """GET /api/contacts/"""
     contacts = Contact.objects.filter(owner=request.user).select_related("contact__profile")
     result = []
     for c in contacts:
@@ -201,6 +213,7 @@ def list_contacts(request):
 
 
 #Messages
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def message_history(request, user_id):
@@ -211,6 +224,7 @@ def message_history(request, user_id):
     result = []
     for m in messages.order_by("timestamp"):
         result.append({
+<<<<<<< HEAD
             "id": m.id,
             "from": m.sender_id,
             "to": m.receiver_id,
@@ -296,3 +310,10 @@ def send_file(request):
         "file_name": message.file_name,
         "file_type": message.file_type,
     })
+=======
+            "id": m.id, "from": m.sender_id, "to": m.receiver_id,
+            "ciphertext": m.ciphertext, "rsa_signature": m.rsa_signature,
+            "timestamp": m.timestamp.isoformat(),
+        })
+    return Response(result)
+>>>>>>> 4cc7f630e23ea0a42220dd2e4ece857d1fead031
