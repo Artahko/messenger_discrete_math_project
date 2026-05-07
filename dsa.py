@@ -1,203 +1,123 @@
-class Stack:
-    def __init__(self):
-        self._data = []
-
-    def push(self, item):
-        self._data.append(item)
-
-    def pop(self):
-        if self.is_empty():
-            raise IndexError("Stack is empty")
-        return self._data.pop()
-
-    def peek(self):
-        if self.is_empty():
-            raise IndexError("Stack is empty")
-        return self._data[-1]
-
-    def is_empty(self):
-        return len(self._data) == 0
-
-    def __len__(self):
-        return len(self._data)
-
-    def __repr__(self):
-        return f"Stack({self._data})"
+import hashlib
+import random
 
 
-class Queue:
-    def __init__(self):
-        self._inbox = []
-        self._outbox = []
-
-    def enqueue(self, item):
-        self._inbox.append(item)
-
-    def dequeue(self):
-        if not self._outbox:
-            while self._inbox:
-                self._outbox.append(self._inbox.pop())
-        if not self._outbox:
-            raise IndexError("Queue is empty")
-        return self._outbox.pop()
-
-    def is_empty(self):
-        return not self._inbox and not self._outbox
-
-    def __len__(self):
-        return len(self._inbox) + len(self._outbox)
-
-    def __repr__(self):
-        return f"Queue({self._outbox[::-1] + self._inbox})"
-
-
-class Node:
-    def __init__(self, value):
-        self.value = value
-        self.next = None
-
-
-class LinkedList:
-    def __init__(self):
-        self.head = None
-        self._size = 0
-
-    def append(self, value):
-        node = Node(value)
-        if self.head is None:
-            self.head = node
+def is_prime(n, k=10):
+    if n < 2:
+        return False
+    if n == 2 or n == 3:
+        return True
+    if n % 2 == 0:
+        return False
+    r, d = 0, n - 1
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+    for _ in range(k):
+        a = random.randrange(2, n - 1)
+        x = pow(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
         else:
-            cur = self.head
-            while cur.next:
-                cur = cur.next
-            cur.next = node
-        self._size += 1
+            return False
+    return True
 
-    def prepend(self, value):
-        node = Node(value)
-        node.next = self.head
-        self.head = node
-        self._size += 1
 
-    def delete(self, value):
-        cur = self.head
-        prev = None
-        while cur:
-            if cur.value == value:
-                if prev:
-                    prev.next = cur.next
-                else:
-                    self.head = cur.next
-                self._size -= 1
-                return True
-            prev, cur = cur, cur.next
+def generate_prime(bits):
+    while True:
+        n = random.getrandbits(bits) | (1 << bits - 1) | 1
+        if is_prime(n):
+            return n
+
+
+def extended_gcd(a, b):
+    if a == 0:
+        return b, 0, 1
+    g, x, y = extended_gcd(b % a, a)
+    return g, y - (b // a) * x, x
+
+
+def mod_inverse(a, m):
+    g, x, _ = extended_gcd(a, m)
+    if g != 1:
+        raise ValueError("inverse doesn't exist")
+    return x % m
+
+
+def hash_message(message):
+    return int(hashlib.sha256(message.encode()).hexdigest(), 16)
+
+
+def generate_keys(bits=256):
+    q = generate_prime(bits)
+
+    p_bits = bits * 4
+    while True:
+        k = random.getrandbits(p_bits - bits)
+        p = k * q + 1
+        if p.bit_length() >= p_bits and is_prime(p):
+            break
+
+    while True:
+        h = random.randrange(2, p - 1)
+        g = pow(h, (p - 1) // q, p)
+        if g > 1:
+            break
+
+    x = random.randrange(1, q)
+    y = pow(g, x, p)
+
+    public_key  = {"p": p, "q": q, "g": g, "y": y}
+    private_key = {"p": p, "q": q, "g": g, "x": x}
+    return public_key, private_key
+
+
+def sign(message, private_key):
+    p, q, g, x = private_key["p"], private_key["q"], private_key["g"], private_key["x"]
+    H = hash_message(message) % q
+
+    while True:
+        k = random.randrange(1, q)
+        r = pow(g, k, p) % q
+        if r == 0:
+            continue
+        k_inv = mod_inverse(k, q)
+        s = (k_inv * (H + x * r)) % q
+        if s != 0:
+            break
+
+    return r, s
+
+
+def verify(message, signature, public_key):
+    p, q, g, y = public_key["p"], public_key["q"], public_key["g"], public_key["y"]
+    r, s = signature
+
+    if not (0 < r < q and 0 < s < q):
         return False
 
-    def __iter__(self):
-        cur = self.head
-        while cur:
-            yield cur.value
-            cur = cur.next
+    H = hash_message(message) % q
+    w = mod_inverse(s, q)
+    u1 = (H * w) % q
+    u2 = (r * w) % q
+    v = (pow(g, u1, p) * pow(y, u2, p)) % p % q
 
-    def __len__(self):
-        return self._size
-
-    def __repr__(self):
-        return " -> ".join(str(v) for v in self) + " -> None"
+    return v == r
 
 
-class BSTNode:
-    def __init__(self, key):
-        self.key = key
-        self.left = None
-        self.right = None
+def main():
+    public_key, private_key = generate_keys(bits=256)
+
+    message = "Hello, DSA!"
+    r, s = sign(message, private_key)
+
+    print(verify(message, (r, s), public_key))
+    print(verify("змінене повідомлення", (r, s), public_key))
 
 
-class BinarySearchTree:
-    def __init__(self):
-        self.root = None
-
-    def insert(self, key):
-        self.root = self._insert(self.root, key)
-
-    def _insert(self, node, key):
-        if node is None:
-            return BSTNode(key)
-        if key < node.key:
-            node.left = self._insert(node.left, key)
-        elif key > node.key:
-            node.right = self._insert(node.right, key)
-        return node
-
-    def search(self, key):
-        return self._search(self.root, key)
-
-    def _search(self, node, key):
-        if node is None:
-            return False
-        if key == node.key:
-            return True
-        return self._search(node.left if key < node.key else node.right, key)
-
-    def inorder(self):
-        result = []
-        self._inorder(self.root, result)
-        return result
-
-    def _inorder(self, node, acc):
-        if node:
-            self._inorder(node.left, acc)
-            acc.append(node.key)
-            self._inorder(node.right, acc)
-
-    def height(self):
-        return self._height(self.root)
-
-    def _height(self, node):
-        if node is None:
-            return 0
-        return 1 + max(self._height(node.left), self._height(node.right))
-
-
-def merge_sort(arr):
-    if len(arr) <= 1:
-        return arr
-    mid = len(arr) // 2
-    left = merge_sort(arr[:mid])
-    right = merge_sort(arr[mid:])
-    return _merge(left, right)
-
-
-def _merge(left, right):
-    result, i, j = [], 0, 0
-    while i < len(left) and j < len(right):
-        if left[i] <= right[j]:
-            result.append(left[i])
-            i += 1
-        else:
-            result.append(right[j])
-            j += 1
-    return result + left[i:] + right[j:]
-
-
-def quick_sort(arr):
-    if len(arr) <= 1:
-        return arr
-    pivot = arr[len(arr) // 2]
-    left   = [x for x in arr if x < pivot]
-    middle = [x for x in arr if x == pivot]
-    right  = [x for x in arr if x > pivot]
-    return quick_sort(left) + middle + quick_sort(right)
-
-
-def binary_search(arr, target):
-    lo, hi = 0, len(arr) - 1
-    while lo <= hi:
-        mid = (lo + hi) // 2
-        if arr[mid] == target:
-            return mid
-        elif arr[mid] < target:
-            lo = mid + 1
-        else:
-            hi = mid - 1
-    return -1
+if __name__ == "__main__":
+    main()
