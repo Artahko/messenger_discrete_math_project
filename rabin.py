@@ -27,3 +27,17 @@ def rabin_karp(text, pattern, base, mod):
                 window_hash += mod
 
     return results
+
+def main():
+    text = "ababcababcabc"
+    pattern = "abc"
+
+    results = rabin_karp(text, pattern, base=256, mod=101)
+
+    print(f"text:    {text}")
+    print(f"pattern: {pattern}")
+    print(f"found at indices: {results}")
+
+
+if __name__ == "__main__":
+    main()

@@ -56,3 +56,20 @@ def int_to_text(num):
     if len(h) % 2:
         h = "0" + h
     return bytes.fromhex(h).decode("utf-8", errors="replace")
+
+def main():
+    p, q = 499, 503
+    n, (p, q) = generate_keys(p, q)
+
+    message = "hi"
+    m = text_to_int(message)
+    c = encrypt(m, n)
+    candidates = decrypt(c, p, q)
+
+    print(f"original:  {message}")
+    print(f"encrypted: {c}")
+    print(f"decrypted candidates: {[int_to_text(x) for x in candidates]}")
+
+
+if __name__ == "__main__":
+    main()
