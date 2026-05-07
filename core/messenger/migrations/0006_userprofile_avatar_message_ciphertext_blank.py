@@ -13,9 +13,4 @@ class Migration(migrations.Migration):
             name='avatar',
             field=models.CharField(max_length=32, default='bob'),
         ),
-        migrations.AlterField(
-            model_name='message',
-            name='ciphertext',
-            field=models.TextField(blank=True, default=''),
-        ),
     ]
